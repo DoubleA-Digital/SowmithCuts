@@ -451,7 +451,8 @@
     <p class="sec-p">Every service is crafted with precision and care. Choose the experience that fits your style.</p>
     <div class="services-grid">
 
-      <div class="svc-card" onclick="pickService('Classic Cut')">
+      <div class="svc-card featured" onclick="pickService('Standard Cut')">
+        <div class="svc-badge">Most Popular</div>
         <div class="svc-icon">✂️</div>
         <div class="svc-name">Standard Cut</div>
         <p class="svc-desc">Clean, precise haircut tailored to your style and face shape.</p>
@@ -469,16 +470,14 @@
         </div>
       </div>
 
-      <div class="svc-card featured" onclick="pickService('Standard Cut + Beard')">
-        <div class="svc-badge">Most Popular</div>
+      <div class="svc-card" onclick="pickService('Standard Cut + Beard')">
         <div class="svc-icon">🪒</div>
         <div class="svc-name">Standard Cut + Beard</div>
-        <p class="svc-desc">The full experience — precision cut with a seamless fade that turns heads.</p>
+        <p class="svc-desc">Precision cut paired with a clean beard lineup and shape for the complete look.</p>
         <ul class="svc-list">
           <li>Custom haircut & style</li>
-          <li>Seamless fade (skin to high)</li>
           <li>Beard lineup & shape</li>
-          <li>Hot towel neck finish</li>
+          <li>Neck & edge cleanup</li>
         </ul>
         <div class="svc-footer">
           <div>
@@ -489,38 +488,19 @@
         </div>
       </div>
 
-      <div class="svc-card" onclick="pickService('Full Grooming')">
-        <div class="svc-icon">👑</div>
-        <div class="svc-name">Full Grooming</div>
-        <p class="svc-desc">Head-to-toe premium grooming. The works — look sharp from every angle.</p>
+      <div class="svc-card" onclick="pickService('Standard Cut + Design')">
+        <div class="svc-icon">🎨</div>
+        <div class="svc-name">+ Design</div>
+        <p class="svc-desc">Add a custom design to any cut. Lines, patterns, or anything you have in mind.</p>
         <ul class="svc-list">
-          <li>Signature cut & fade</li>
-          <li>Full beard trim & shape</li>
-          <li>Hot towel treatment</li>
-          <li>Scalp massage & styling</li>
+          <li>Add to Standard Cut — $25</li>
+          <li>Add to Standard Cut + Beard — $35</li>
+          <li>Custom line work & patterns</li>
         </ul>
         <div class="svc-footer">
           <div>
-            <div class="svc-price">$65<small> flat</small></div>
-            <div class="svc-duration">~75 min</div>
-          </div>
-          <button class="svc-book-btn">Book This</button>
-        </div>
-      </div>
-
-      <div class="svc-card" onclick="pickService('Kids Cut')">
-        <div class="svc-icon">⭐</div>
-        <div class="svc-name">Kids Cut</div>
-        <p class="svc-desc">Gentle, patient, and fun for the little ones. Ages 12 and under.</p>
-        <ul class="svc-list">
-          <li>Child-friendly experience</li>
-          <li>Precision cut & style</li>
-          <li>Clean finish</li>
-        </ul>
-        <div class="svc-footer">
-          <div>
-            <div class="svc-price">$18<small> flat</small></div>
-            <div class="svc-duration">~25 min</div>
+            <div class="svc-price">+$5<small> add-on</small></div>
+            <div class="svc-duration">~10 min extra</div>
           </div>
           <button class="svc-book-btn">Book This</button>
         </div>
@@ -596,8 +576,6 @@
             <option value="Standard Cut + Beard">Standard Cut + Beard — $30</option>
             <option value="Standard Cut + Design">Standard Cut + Design — $25</option>
             <option value="Standard Cut + Beard + Design">Standard Cut + Beard + Design — $35</option>
-            <option value="Full Grooming">Full Grooming — $65</option>
-            <option value="Kids Cut">Kids Cut — $18</option>
           </select>
         </div>
         <div class="fgroup">
