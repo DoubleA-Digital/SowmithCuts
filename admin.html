@@ -469,6 +469,48 @@
     .toast.t-ok  { border-color: rgba(92,184,92,0.5); }
     .toast.t-err { border-color: rgba(224,92,92,0.5); }
 
+    /* ── Messages ── */
+    .msg-layout { display: grid; grid-template-columns: 280px 1fr; gap: 1.2rem; height: calc(100vh - 140px); min-height: 400px; }
+    .msg-list { background: var(--dark-3); border: 1px solid var(--border); border-radius: 10px; overflow-y: auto; }
+    .msg-list-head { padding: 1rem 1.2rem; border-bottom: 1px solid var(--border); font-weight: 600; font-size: 0.88rem; background: var(--dark-4); }
+    .msg-item {
+      padding: 0.9rem 1.2rem; border-bottom: 1px solid var(--border);
+      cursor: pointer; transition: background 0.15s;
+    }
+    .msg-item:hover { background: rgba(255,255,255,0.03); }
+    .msg-item.active { background: rgba(201,168,76,0.08); border-left: 2px solid var(--gold); }
+    .msg-item.unread .msg-item-name { color: var(--gold); }
+    .msg-item-name { font-weight: 600; font-size: 0.88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .msg-item-preview { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.15rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .msg-item-time { font-size: 0.68rem; color: var(--text-muted); margin-top: 0.1rem; }
+    .msg-convo { background: var(--dark-3); border: 1px solid var(--border); border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; }
+    .msg-convo-head { padding: 1rem 1.4rem; border-bottom: 1px solid var(--border); background: var(--dark-4); display: flex; align-items: center; gap: 0.8rem; }
+    .msg-convo-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--gold); color: var(--dark); display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0; }
+    .msg-convo-name { font-weight: 600; font-size: 0.9rem; }
+    .msg-convo-messages { flex: 1; overflow-y: auto; padding: 1.2rem; display: flex; flex-direction: column; gap: 0.7rem; }
+    .msg-convo-messages::-webkit-scrollbar { width: 4px; }
+    .msg-convo-messages::-webkit-scrollbar-thumb { background: var(--border); }
+    .msg-bubble { max-width: 72%; padding: 0.6rem 1rem; border-radius: 10px; font-size: 0.86rem; line-height: 1.5; word-break: break-word; }
+    .msg-bubble.user { align-self: flex-start; background: var(--dark-4); border: 1px solid var(--border); }
+    .msg-bubble.sowmith { align-self: flex-end; background: var(--gold); color: var(--dark); }
+    .msg-bubble-time { font-size: 0.65rem; opacity: 0.6; margin-top: 0.2rem; }
+    .msg-convo-input { padding: 1rem; border-top: 1px solid var(--border); background: var(--dark-4); display: flex; gap: 0.6rem; }
+    .msg-reply-input {
+      flex: 1; background: var(--dark-3); border: 1.5px solid var(--border);
+      border-radius: 6px; color: var(--text); padding: 0.65rem 0.95rem;
+      font-size: 0.88rem; font-family: 'Inter', sans-serif; outline: none;
+      transition: border-color 0.2s;
+    }
+    .msg-reply-input:focus { border-color: var(--gold); }
+    .msg-reply-btn {
+      background: var(--gold); color: var(--dark); border: none;
+      border-radius: 6px; padding: 0 1.2rem; font-size: 0.88rem;
+      font-weight: 700; cursor: pointer; transition: background 0.2s;
+    }
+    .msg-reply-btn:hover { background: var(--gold-light); }
+    .msg-empty { display: flex; align-items: center; justify-content: center; flex: 1; color: var(--text-muted); font-size: 0.88rem; font-style: italic; }
+    @media (max-width: 800px) { .msg-layout { grid-template-columns: 1fr; height: auto; } .msg-convo { min-height: 400px; } }
+
     /* ── Responsive ── */
     .mobile-nav-btn {
       display: none; position: fixed; top: 1rem; left: 1rem; z-index: 60;
@@ -542,6 +584,12 @@
       </button>
       <button class="sb-link" data-page="availability">
         <span class="sb-icon">🚫</span> Availability
+      </button>
+
+      <div class="sb-section-label">Communication</div>
+      <button class="sb-link" data-page="messages">
+        <span class="sb-icon">💬</span> Messages
+        <span id="chat-badge" style="margin-left:auto;background:var(--red);color:#fff;font-size:.68rem;padding:1px 6px;border-radius:10px;display:none"></span>
       </button>
 
       <div class="sb-section-label">Account</div>
@@ -728,6 +776,29 @@
     </div>
 
     <!-- ─── SETTINGS PAGE ─── -->
+    <div class="page" id="page-messages">
+      <div class="msg-layout">
+        <div class="msg-list">
+          <div class="msg-list-head">All Conversations</div>
+          <div id="msg-list-body"><div class="empty-state">No messages yet.</div></div>
+        </div>
+        <div class="msg-convo" id="msg-convo">
+          <div class="msg-empty" id="msg-convo-empty">Select a conversation to view messages</div>
+          <div id="msg-convo-inner" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+            <div class="msg-convo-head">
+              <div class="msg-convo-avatar" id="convo-avatar">?</div>
+              <div class="msg-convo-name" id="convo-name">—</div>
+            </div>
+            <div class="msg-convo-messages" id="convo-messages"></div>
+            <div class="msg-convo-input">
+              <input class="msg-reply-input" id="msg-reply-input" type="text" placeholder="Reply to this customer..." maxlength="500" onkeydown="if(event.key==='Enter')adminSendMsg()">
+              <button class="msg-reply-btn" onclick="adminSendMsg()">Send</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="page" id="page-settings">
       <div class="settings-card">
         <div class="settings-title">Change Password</div>
@@ -802,7 +873,7 @@ import { initializeApp }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import {
   getFirestore, doc, setDoc, updateDoc, deleteField,
-  onSnapshot, collection, writeBatch, getDocs
+  onSnapshot, collection, writeBatch, getDocs, addDoc, serverTimestamp, query, orderBy
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 import { FIREBASE_CONFIG } from './firebase-config.js';
 
@@ -912,6 +983,7 @@ function showDashboard() {
   document.getElementById('dashboard').style.display = 'block';
   document.getElementById('sbUserName').textContent = getCreds().user;
   startListeners();
+  startChatListener();
   initDashboard();
 }
 
@@ -1011,6 +1083,7 @@ const PAGE_TITLES = {
   appointments: 'All Appointments',
   calendar: 'Calendar View',
   availability: 'Availability',
+  messages: 'Messages',
   settings: 'Settings',
 };
 
@@ -1032,6 +1105,7 @@ function setupSidebar() {
       if (pg === 'appointments') renderApptTable();
       if (pg === 'calendar')     renderAdminCal();
       if (pg === 'availability') renderBlocked();
+      if (pg === 'messages')     renderMessages();
     });
   });
 
@@ -1505,11 +1579,118 @@ function esc(s) {
 }
 
 // ══════════════════════════════════════════════
+//  MESSAGES / CHAT
+// ══════════════════════════════════════════════
+let allChats = {};
+let selectedChatId = null;
+let convoUnsub = null;
+let chatsUnsub = null;
+
+function renderMessages() {
+  if (chatsUnsub) return; // already listening
+  chatsUnsub = onSnapshot(collection(db, 'chats'), snap => {
+    allChats = {};
+    let totalUnread = 0;
+    snap.forEach(d => {
+      allChats[d.id] = { id: d.id, ...d.data() };
+      if ((d.data().unread || 0) > 0) totalUnread++;
+    });
+    renderChatList();
+    // badge
+    const badge = document.getElementById('chat-badge');
+    if (totalUnread > 0) { badge.style.display = 'inline'; badge.textContent = totalUnread; }
+    else badge.style.display = 'none';
+  });
+}
+
+function renderChatList() {
+  const body = document.getElementById('msg-list-body');
+  const chats = Object.values(allChats).sort((a, b) => {
+    const ta = a.lastTime ? a.lastTime.toMillis() : 0;
+    const tb = b.lastTime ? b.lastTime.toMillis() : 0;
+    return tb - ta;
+  });
+  if (!chats.length) { body.innerHTML = '<div class="empty-state">No messages yet.</div>'; return; }
+  body.innerHTML = chats.map(c => {
+    const hasUnread = (c.unread || 0) > 0;
+    const t = c.lastTime ? new Date(c.lastTime.toMillis()).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}) : '';
+    return `<div class="msg-item ${selectedChatId===c.id?'active':''} ${hasUnread?'unread':''}" onclick="openConvo('${c.id}')">
+      <div class="msg-item-name">${c.userName || 'Unknown'} ${hasUnread?'<span style="background:var(--red);color:#fff;font-size:.6rem;padding:1px 5px;border-radius:8px;margin-left:4px">NEW</span>':''}</div>
+      <div class="msg-item-preview">${c.lastMsg || 'No messages yet'}</div>
+      <div class="msg-item-time">${t}</div>
+    </div>`;
+  }).join('');
+}
+
+function openConvo(chatId) {
+  selectedChatId = chatId;
+  renderChatList(); // re-render list to update active state
+
+  document.getElementById('msg-convo-empty').style.display = 'none';
+  const inner = document.getElementById('msg-convo-inner');
+  inner.style.display = 'flex';
+
+  const chat = allChats[chatId];
+  const initial = (chat.userName || '?')[0].toUpperCase();
+  document.getElementById('convo-avatar').textContent = initial;
+  document.getElementById('convo-name').textContent = chat.userName || 'Unknown';
+
+  // clear unread
+  updateDoc(doc(db, 'chats', chatId), { unread: 0 }).catch(() => {});
+
+  // listen to messages
+  if (convoUnsub) convoUnsub();
+  const q = query(collection(db, 'chats', chatId, 'messages'), orderBy('time', 'asc'));
+  convoUnsub = onSnapshot(q, snap => {
+    const container = document.getElementById('convo-messages');
+    if (snap.empty) { container.innerHTML = '<div style="text-align:center;color:var(--text-muted);font-size:.82rem;padding:2rem;font-style:italic">No messages yet</div>'; return; }
+    container.innerHTML = '';
+    snap.forEach(d => {
+      const m = d.data();
+      const div = document.createElement('div');
+      div.className = 'msg-bubble ' + m.sender;
+      const t = m.time ? new Date(m.time.toMillis()).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}) : '';
+      div.innerHTML = `<div>${m.text}</div><div class="msg-bubble-time">${t}</div>`;
+      container.appendChild(div);
+    });
+    container.scrollTop = container.scrollHeight;
+  });
+}
+
+async function adminSendMsg() {
+  if (!selectedChatId) return;
+  const input = document.getElementById('msg-reply-input');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  await addDoc(collection(db, 'chats', selectedChatId, 'messages'), {
+    text, sender: 'sowmith', time: serverTimestamp()
+  });
+  await updateDoc(doc(db, 'chats', selectedChatId), {
+    lastMsg: text, lastTime: serverTimestamp(), unread: 0, unreadUser: 1
+  });
+}
+
+// Start listening to chats for badge as soon as logged in
+function startChatListener() {
+  onSnapshot(collection(db, 'chats'), snap => {
+    let totalUnread = 0;
+    snap.forEach(d => { if ((d.data().unread || 0) > 0) totalUnread++; });
+    const badge = document.getElementById('chat-badge');
+    if (badge) {
+      if (totalUnread > 0) { badge.style.display = 'inline'; badge.textContent = totalUnread; }
+      else badge.style.display = 'none';
+    }
+  });
+}
+
+// ══════════════════════════════════════════════
 //  EXPOSE GLOBALS (required for onclick= in HTML)
 // ══════════════════════════════════════════════
 Object.assign(window, {
   logout, promptCancel, addBlock, removeBlock,
-  confirmClearAll, clearDayPanel, closeConfirm
+  confirmClearAll, clearDayPanel, closeConfirm,
+  openConvo, adminSendMsg
 });
 
 // ══════════════════════════════════════════════
