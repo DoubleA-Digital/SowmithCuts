@@ -666,6 +666,10 @@
           <input type="tel" class="finput" id="fPhone" placeholder="(555) 000-0000" required autocomplete="tel">
         </div>
         <div class="fgroup">
+          <label class="flabel" for="fEmail">Email <span style="color:var(--text-muted);font-weight:400">(optional — for confirmation)</span></label>
+          <input type="email" class="finput" id="fEmail" placeholder="your@email.com" autocomplete="email">
+        </div>
+        <div class="fgroup">
           <label class="flabel" for="fService">Service</label>
           <select class="fselect" id="fService" required>
             <option value="">Choose a service...</option>
@@ -685,6 +689,26 @@
     </div>
   </div>
 </section>
+
+<!-- ═══ CANCEL APPOINTMENT ═══ -->
+<div class="sec-band" id="cancel" style="background:var(--dark-2)">
+  <div class="sec-inner" style="max-width:560px">
+    <p class="sec-tag">Need to Cancel?</p>
+    <div class="sec-rule"></div>
+    <h2 class="sec-h">Cancel Your Appointment</h2>
+    <p style="text-align:center;color:var(--text-muted);margin-bottom:2.5rem">Enter your reference number and phone number below.</p>
+    <div class="fgroup">
+      <label class="flabel" for="cancelRef">Reference Number</label>
+      <input type="text" class="finput" id="cancelRef" placeholder="e.g. M8JK2ZABC" style="text-transform:uppercase">
+    </div>
+    <div class="fgroup">
+      <label class="flabel" for="cancelPhone">Phone Number</label>
+      <input type="tel" class="finput" id="cancelPhone" placeholder="(555) 000-0000">
+    </div>
+    <button class="submit-btn" id="cancelBtn" onclick="lookupCancel()">Find My Appointment</button>
+    <div id="cancelResult" style="margin-top:1.5rem;display:none"></div>
+  </div>
+</div>
 
 <!-- ═══ ABOUT ═══ -->
 <div class="sec-band" id="about">
@@ -772,18 +796,24 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script>
+  // Initialize EmailJS — replace with your actual public key from emailjs.com
+  (function(){ if(window.emailjs) emailjs.init({ publicKey: 'YOUR_PUBLIC_KEY' }); })();
+</script>
 <script type="module">
 // ══════════════════════════════════════════════
 //  FIREBASE
 // ══════════════════════════════════════════════
 import { initializeApp }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getFirestore, doc, setDoc, onSnapshot, collection, addDoc, serverTimestamp, query, orderBy, updateDoc }
+import { getFirestore, doc, setDoc, getDoc, deleteDoc, onSnapshot, collection, addDoc, serverTimestamp, query, orderBy, updateDoc, deleteField }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 import { FIREBASE_CONFIG } from './firebase-config.js';
 
 const app = initializeApp(FIREBASE_CONFIG);
 const db  = getFirestore(app);
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
 // ══════════════════════════════════════════════
 //  CONFIG
@@ -1030,6 +1060,7 @@ document.getElementById('bForm').addEventListener('submit', async function(e) {
   e.preventDefault();
   const name    = document.getElementById('fName').value.trim();
   const phone   = document.getElementById('fPhone').value.trim();
+  const email   = document.getElementById('fEmail').value.trim();
   const service = document.getElementById('fService').value;
   const notes   = document.getElementById('fNotes').value.trim();
   if (!selDate || !selTime || !service || !name || !phone) return;
@@ -1045,8 +1076,23 @@ document.getElementById('bForm').addEventListener('submit', async function(e) {
 
   try {
     const id   = Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2,5).toUpperCase();
-    const data = { name, phone, service, notes, id, at: new Date().toISOString() };
+    const data = { name, phone, email, service, notes, id, at: new Date().toISOString() };
     await setDoc(doc(db, 'bookings', selDate), { [selTime]: data }, { merge: true });
+    // Store ref for cancellation lookup
+    await setDoc(doc(db, 'refs', id), { date: selDate, time: selTime, name, phone, service });
+
+    // Send email notifications
+    const d = new Date(selDate + 'T12:00:00');
+    const dateStr = d.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric', year:'numeric' });
+    if (window.emailjs) {
+      const params = { customer_name: name, customer_phone: phone, appointment_date: dateStr, appointment_time: selTime, service_name: service, ref_number: id, notes: notes || 'None' };
+      // Notify Sowmith
+      emailjs.send('YOUR_SERVICE_ID', 'TEMPLATE_BARBER_NOTIFY', params, 'YOUR_PUBLIC_KEY').catch(()=>{});
+      // Confirm to customer
+      if (email) {
+        emailjs.send('YOUR_SERVICE_ID', 'TEMPLATE_CUSTOMER_CONFIRM', { ...params, customer_email: email }, 'YOUR_PUBLIC_KEY').catch(()=>{});
+      }
+    }
 
     showSuccess(name, selDate, selTime, service, id);
     selDate = null; selTime = null;
@@ -1079,6 +1125,67 @@ function showSuccess(name, dateKey, time, service, id) {
   document.getElementById('successOverlay').classList.add('on');
 }
 function closeModal() { document.getElementById('successOverlay').classList.remove('on'); }
+
+// ══════════════════════════════════════════════
+//  CANCELLATION
+// ══════════════════════════════════════════════
+window.lookupCancel = async function() {
+  const refId = document.getElementById('cancelRef').value.trim().toUpperCase();
+  const phone = document.getElementById('cancelPhone').value.trim();
+  const resultEl = document.getElementById('cancelResult');
+  if (!refId || !phone) { toast('Please enter both fields.', 'err'); return; }
+  const btn = document.getElementById('cancelBtn');
+  btn.textContent = 'Looking up…'; btn.disabled = true;
+  try {
+    const refSnap = await getDoc(doc(db, 'refs', refId));
+    if (!refSnap.exists()) {
+      toast('Booking not found. Check your reference number.', 'err');
+      btn.textContent = 'Find My Appointment'; btn.disabled = false; return;
+    }
+    const r = refSnap.data();
+    if (r.phone !== phone) {
+      toast('Phone number doesn\'t match our records.', 'err');
+      btn.textContent = 'Find My Appointment'; btn.disabled = false; return;
+    }
+    const d = new Date(r.date + 'T12:00:00');
+    const dateStr = d.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric', year:'numeric' });
+    resultEl.style.display = 'block';
+    resultEl.innerHTML = `
+      <div style="background:var(--dark-3);border:1px solid var(--border);border-radius:8px;padding:1.5rem">
+        <p style="color:var(--text-muted);font-size:.8rem;letter-spacing:1px;margin-bottom:1rem">APPOINTMENT FOUND</p>
+        <div class="modal-row"><label>Name</label><span>${esc(r.name)}</span></div>
+        <div class="modal-row"><label>Date</label><span>${dateStr}</span></div>
+        <div class="modal-row"><label>Time</label><span>${r.time}</span></div>
+        <div class="modal-row"><label>Service</label><span>${esc(r.service)}</span></div>
+        <button class="submit-btn" style="background:#c0392b;margin-top:1.5rem;width:100%" id="confirmCancelBtn">Cancel This Appointment</button>
+      </div>`;
+    document.getElementById('confirmCancelBtn').onclick = () => doCancel(refId, r.date, r.time);
+    btn.textContent = 'Find My Appointment'; btn.disabled = false;
+  } catch(err) {
+    console.error(err);
+    toast('Error looking up booking. Try again.', 'err');
+    btn.textContent = 'Find My Appointment'; btn.disabled = false;
+  }
+};
+
+async function doCancel(refId, date, time) {
+  if (!confirm('Are you sure you want to cancel this appointment?')) return;
+  try {
+    await updateDoc(doc(db, 'bookings', date), { [time]: deleteField() });
+    await deleteDoc(doc(db, 'refs', refId));
+    document.getElementById('cancelResult').innerHTML = `
+      <div style="background:rgba(92,184,92,.08);border:1px solid var(--green);border-radius:8px;padding:1.5rem;text-align:center">
+        <div style="font-size:2rem;margin-bottom:.5rem">✅</div>
+        <p style="color:var(--green);font-weight:600;margin-bottom:.4rem">Appointment Cancelled</p>
+        <p style="color:var(--text-muted);font-size:.85rem">Your time slot has been released.</p>
+      </div>`;
+    document.getElementById('cancelRef').value = '';
+    document.getElementById('cancelPhone').value = '';
+  } catch(err) {
+    console.error(err);
+    toast('Error cancelling. Please contact us directly.', 'err');
+  }
+}
 document.getElementById('successOverlay').addEventListener('click', function(e) {
   if (e.target === this) closeModal();
 });

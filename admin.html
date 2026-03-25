@@ -729,10 +729,10 @@
         </select>
         <select id="filterService" class="block-input" style="min-width:160px">
           <option value="all">All Services</option>
-          <option value="Classic Cut">Classic Cut</option>
-          <option value="Signature Cut + Fade">Signature Cut + Fade</option>
-          <option value="Full Grooming">Full Grooming</option>
-          <option value="Kids Cut">Kids Cut</option>
+          <option value="Standard Cut">Standard Cut</option>
+          <option value="Standard Cut + Beard">Standard Cut + Beard</option>
+          <option value="Standard Cut + Design">Standard Cut + Design</option>
+          <option value="Standard Cut + Beard + Design">Standard Cut + Beard + Design</option>
         </select>
         <input type="text" id="filterSearch" class="block-note" placeholder="Search by name or phone…" style="max-width:220px;flex:1">
       </div>
@@ -1887,7 +1887,13 @@ function openConvo(chatId) {
       const div = document.createElement('div');
       div.className = 'msg-bubble ' + m.sender;
       const t = m.time ? new Date(m.time.toMillis()).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}) : '';
-      div.innerHTML = `<div>${m.text}</div><div class="msg-bubble-time">${t}</div>`;
+      const textDiv = document.createElement('div');
+      textDiv.textContent = m.text;
+      const timeDiv = document.createElement('div');
+      timeDiv.className = 'msg-bubble-time';
+      timeDiv.textContent = t;
+      div.appendChild(textDiv);
+      div.appendChild(timeDiv);
       container.appendChild(div);
     });
     container.scrollTop = container.scrollHeight;
