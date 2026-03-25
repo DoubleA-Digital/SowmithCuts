@@ -469,6 +469,43 @@
     .toast.t-ok  { border-color: rgba(92,184,92,0.5); }
     .toast.t-err { border-color: rgba(224,92,92,0.5); }
 
+    /* ── Analytics ── */
+    .analytics-tabs { display: flex; gap: 0.5rem; margin-bottom: 1.8rem; flex-wrap: wrap; }
+    .atab {
+      background: var(--dark-3); border: 1px solid var(--border);
+      border-radius: 6px; padding: 0.55rem 1.2rem;
+      font-size: 0.82rem; font-weight: 600; cursor: pointer;
+      color: var(--text-muted); transition: all 0.15s;
+    }
+    .atab:hover { border-color: rgba(201,168,76,0.4); color: var(--text); }
+    .atab.active { background: rgba(201,168,76,0.12); border-color: var(--gold); color: var(--gold); }
+    .analytics-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px,1fr)); gap: 1rem; margin-bottom: 1.8rem; }
+    .astat { background: var(--dark-3); border: 1px solid var(--border); border-radius: 10px; padding: 1.3rem 1.5rem; }
+    .astat.highlight { border-color: rgba(201,168,76,0.4); background: rgba(201,168,76,0.04); }
+    .astat-num { font-family: 'Playfair Display', serif; font-size: 2rem; color: var(--gold); line-height: 1; }
+    .astat-label { font-size: 0.73rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; margin-top: 0.35rem; }
+    .chart-card { background: var(--dark-3); border: 1px solid var(--border); border-radius: 10px; padding: 1.4rem; margin-bottom: 1.5rem; }
+    .chart-title { font-family: 'Playfair Display', serif; font-size: 1rem; margin-bottom: 1.2rem; }
+    .bar-chart { display: flex; align-items: flex-end; gap: 6px; height: 140px; }
+    .bar-wrap { display: flex; flex-direction: column; align-items: center; flex: 1; height: 100%; justify-content: flex-end; }
+    .bar { width: 100%; background: rgba(201,168,76,0.7); border-radius: 4px 4px 0 0; transition: height 0.4s, background 0.2s; cursor: default; min-height: 3px; position: relative; }
+    .bar:hover { background: var(--gold); }
+    .bar-tooltip { display: none; position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); background: var(--dark-2); border: 1px solid var(--border); border-radius: 5px; padding: 3px 8px; font-size: 0.7rem; white-space: nowrap; color: var(--gold); z-index: 10; }
+    .bar:hover .bar-tooltip { display: block; }
+    .bar-label { font-size: 0.62rem; color: var(--text-muted); margin-top: 4px; text-align: center; }
+    .service-breakdown { display: flex; flex-direction: column; gap: 0.7rem; }
+    .svc-row { display: flex; align-items: center; gap: 0.8rem; }
+    .svc-row-name { font-size: 0.82rem; width: 220px; flex-shrink: 0; }
+    .svc-bar-bg { flex: 1; background: var(--dark-4); border-radius: 3px; height: 10px; overflow: hidden; }
+    .svc-bar-fill { height: 100%; background: var(--gold); border-radius: 3px; transition: width 0.4s; }
+    .svc-row-val { font-size: 0.78rem; color: var(--gold); width: 55px; text-align: right; flex-shrink: 0; }
+    .analytics-reset-btn {
+      background: none; border: 1px solid rgba(224,92,92,0.4); color: var(--red);
+      border-radius: 6px; padding: 0.6rem 1.3rem; font-size: 0.82rem;
+      font-weight: 600; cursor: pointer; transition: background 0.2s;
+    }
+    .analytics-reset-btn:hover { background: var(--red-bg); }
+
     /* ── Messages ── */
     .msg-layout { display: grid; grid-template-columns: 280px 1fr; gap: 1.2rem; height: calc(100vh - 140px); min-height: 400px; }
     .msg-list { background: var(--dark-3); border: 1px solid var(--border); border-radius: 10px; overflow-y: auto; }
@@ -584,6 +621,11 @@
       </button>
       <button class="sb-link" data-page="availability">
         <span class="sb-icon">🚫</span> Availability
+      </button>
+
+      <div class="sb-section-label">Analytics</div>
+      <button class="sb-link" data-page="analytics">
+        <span class="sb-icon">📈</span> Analytics
       </button>
 
       <div class="sb-section-label">Communication</div>
@@ -776,6 +818,27 @@
     </div>
 
     <!-- ─── SETTINGS PAGE ─── -->
+    <div class="page" id="page-analytics">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem">
+        <div class="analytics-tabs">
+          <button class="atab active" onclick="setAnalyticsTab('day',this)">Today</button>
+          <button class="atab" onclick="setAnalyticsTab('week',this)">This Week</button>
+          <button class="atab" onclick="setAnalyticsTab('month',this)">This Month</button>
+          <button class="atab" onclick="setAnalyticsTab('6months',this)">6 Months</button>
+        </div>
+        <button class="analytics-reset-btn" onclick="confirmResetAnalytics()">🗑 Reset Analytics</button>
+      </div>
+      <div class="analytics-stats" id="analytics-stats"></div>
+      <div class="chart-card">
+        <div class="chart-title" id="chart-title">Revenue</div>
+        <div class="bar-chart" id="analytics-chart"></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Revenue by Service</div>
+        <div class="service-breakdown" id="service-breakdown"></div>
+      </div>
+    </div>
+
     <div class="page" id="page-messages">
       <div class="msg-layout">
         <div class="msg-list">
@@ -984,6 +1047,7 @@ function showDashboard() {
   document.getElementById('sbUserName').textContent = getCreds().user;
   startListeners();
   startChatListener();
+  loadAnalyticsSettings();
   initDashboard();
 }
 
@@ -1083,6 +1147,7 @@ const PAGE_TITLES = {
   appointments: 'All Appointments',
   calendar: 'Calendar View',
   availability: 'Availability',
+  analytics: 'Analytics',
   messages: 'Messages',
   settings: 'Settings',
 };
@@ -1105,6 +1170,7 @@ function setupSidebar() {
       if (pg === 'appointments') renderApptTable();
       if (pg === 'calendar')     renderAdminCal();
       if (pg === 'availability') renderBlocked();
+      if (pg === 'analytics')    renderAnalytics();
       if (pg === 'messages')     renderMessages();
     });
   });
@@ -1579,6 +1645,177 @@ function esc(s) {
 }
 
 // ══════════════════════════════════════════════
+//  ANALYTICS
+// ══════════════════════════════════════════════
+const SERVICE_PRICES = {
+  'Standard Cut': 20,
+  'Standard Cut + Beard': 30,
+  'Standard Cut + Design': 25,
+  'Standard Cut + Beard + Design': 35,
+  'Full Grooming': 65,
+  'Kids Cut': 18,
+};
+
+let analyticsTab = 'day';
+let analyticsResetDate = null; // Date object — only count bookings on/after this
+
+function setAnalyticsTab(tab, btn) {
+  analyticsTab = tab;
+  document.querySelectorAll('.atab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderAnalytics();
+}
+
+function getAnalyticsBookings() {
+  const all = getAllBookings();
+  if (!analyticsResetDate) return all;
+  return all.filter(r => new Date(r.date + 'T12:00:00') >= analyticsResetDate);
+}
+
+function renderAnalytics() {
+  const today = new Date();
+  const todayStr = todayKey();
+  let fromDate;
+  let labelFn, buckets;
+
+  if (analyticsTab === 'day') {
+    fromDate = new Date(todayStr + 'T00:00:00');
+    document.getElementById('chart-title').textContent = 'Appointments Today';
+  } else if (analyticsTab === 'week') {
+    fromDate = new Date(today); fromDate.setDate(today.getDate() - 6); fromDate.setHours(0,0,0,0);
+    document.getElementById('chart-title').textContent = 'Revenue — Last 7 Days';
+  } else if (analyticsTab === 'month') {
+    fromDate = new Date(today); fromDate.setDate(today.getDate() - 29); fromDate.setHours(0,0,0,0);
+    document.getElementById('chart-title').textContent = 'Revenue — Last 30 Days';
+  } else {
+    fromDate = new Date(today); fromDate.setMonth(today.getMonth() - 6); fromDate.setHours(0,0,0,0);
+    document.getElementById('chart-title').textContent = 'Revenue — Last 6 Months';
+  }
+
+  const allFiltered = getAnalyticsBookings().filter(r => new Date(r.date + 'T12:00:00') >= fromDate);
+  const revenue = allFiltered.reduce((s, r) => s + (SERVICE_PRICES[r.service] || 0), 0);
+  const count   = allFiltered.length;
+  const avg     = count ? Math.round(revenue / count) : 0;
+  // top service
+  const svcCounts = {};
+  allFiltered.forEach(r => { svcCounts[r.service] = (svcCounts[r.service]||0) + 1; });
+  const topSvc = Object.entries(svcCounts).sort((a,b) => b[1]-a[1])[0];
+
+  document.getElementById('analytics-stats').innerHTML = `
+    <div class="astat highlight"><div class="astat-num">$${revenue}</div><div class="astat-label">Total Revenue</div></div>
+    <div class="astat"><div class="astat-num">${count}</div><div class="astat-label">Appointments</div></div>
+    <div class="astat"><div class="astat-num">$${avg}</div><div class="astat-label">Avg per Booking</div></div>
+    <div class="astat"><div class="astat-num" style="font-size:1.1rem;padding-top:.4rem">${topSvc ? topSvc[0] : '—'}</div><div class="astat-label">Top Service</div></div>
+  `;
+
+  // Bar chart
+  renderBarChart(allFiltered, fromDate);
+
+  // Service breakdown
+  const svcRevenue = {};
+  allFiltered.forEach(r => {
+    const p = SERVICE_PRICES[r.service] || 0;
+    svcRevenue[r.service] = (svcRevenue[r.service]||0) + p;
+  });
+  const maxRev = Math.max(...Object.values(svcRevenue), 1);
+  const breakdown = document.getElementById('service-breakdown');
+  const entries = Object.entries(svcRevenue).sort((a,b) => b[1]-a[1]);
+  if (!entries.length) { breakdown.innerHTML = '<div style="color:var(--text-muted);font-size:.85rem;font-style:italic">No data for this period.</div>'; return; }
+  breakdown.innerHTML = entries.map(([svc, rev]) => `
+    <div class="svc-row">
+      <div class="svc-row-name">${svc}</div>
+      <div class="svc-bar-bg"><div class="svc-bar-fill" style="width:${Math.round(rev/maxRev*100)}%"></div></div>
+      <div class="svc-row-val">$${rev}</div>
+    </div>`).join('');
+}
+
+function renderBarChart(bookings, fromDate) {
+  const chart = document.getElementById('analytics-chart');
+  const bucketMap = {};
+
+  if (analyticsTab === 'day') {
+    // by hour
+    for (let h = 9; h <= 18; h++) {
+      const label = h <= 12 ? `${h}AM` : `${h-12}PM`;
+      bucketMap[String(h)] = { label, rev: 0, count: 0 };
+    }
+    bookings.forEach(r => {
+      const h = parseTime(r.time) / 60;
+      const key = String(Math.floor(h));
+      if (bucketMap[key]) { bucketMap[key].rev += SERVICE_PRICES[r.service]||0; bucketMap[key].count++; }
+    });
+  } else if (analyticsTab === 'week') {
+    const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(); d.setDate(d.getDate() - i); d.setHours(0,0,0,0);
+      const key = d.toISOString().slice(0,10);
+      bucketMap[key] = { label: days[d.getDay()], rev: 0, count: 0 };
+    }
+    bookings.forEach(r => { if (bucketMap[r.date]) { bucketMap[r.date].rev += SERVICE_PRICES[r.service]||0; bucketMap[r.date].count++; } });
+  } else if (analyticsTab === 'month') {
+    // group by week
+    for (let w = 3; w >= 0; w--) {
+      const label = w === 0 ? 'This Wk' : `${w}w ago`;
+      bucketMap[String(w)] = { label, rev: 0, count: 0 };
+    }
+    bookings.forEach(r => {
+      const daysAgo = Math.floor((new Date() - new Date(r.date+'T12:00:00')) / 86400000);
+      const w = Math.min(3, Math.floor(daysAgo / 7));
+      if (bucketMap[String(w)]) { bucketMap[String(w)].rev += SERVICE_PRICES[r.service]||0; bucketMap[String(w)].count++; }
+    });
+  } else {
+    // 6 months — by month
+    for (let m = 5; m >= 0; m--) {
+      const d = new Date(); d.setMonth(d.getMonth() - m);
+      const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+      const label = d.toLocaleString('en-US',{month:'short'});
+      bucketMap[key] = { label, rev: 0, count: 0 };
+    }
+    bookings.forEach(r => {
+      const key = r.date.slice(0,7);
+      if (bucketMap[key]) { bucketMap[key].rev += SERVICE_PRICES[r.service]||0; bucketMap[key].count++; }
+    });
+  }
+
+  const buckets = Object.values(bucketMap);
+  const maxRev = Math.max(...buckets.map(b => b.rev), 1);
+  chart.innerHTML = buckets.map(b => {
+    const pct = Math.round(b.rev / maxRev * 100);
+    return `<div class="bar-wrap">
+      <div class="bar" style="height:${pct}%">
+        <div class="bar-tooltip">$${b.rev}${b.count ? ` (${b.count})` : ''}</div>
+      </div>
+      <div class="bar-label">${b.label}</div>
+    </div>`;
+  }).join('');
+}
+
+function confirmResetAnalytics() {
+  showConfirm(
+    'Reset Analytics',
+    'This will clear all analytics data. Existing appointments will <strong>not</strong> be deleted — only the analytics counts will reset to zero.',
+    '<p><strong>Action:</strong> Reset analytics start date to now</p>',
+    'Reset Analytics',
+  );
+  pendingAction = async () => {
+    analyticsResetDate = new Date();
+    await setDoc(doc(db, 'settings', 'analytics'), { resetDate: serverTimestamp() });
+    toast('Analytics reset ✓');
+    renderAnalytics();
+  };
+}
+
+// Load analytics reset date on startup
+async function loadAnalyticsSettings() {
+  onSnapshot(doc(db, 'settings', 'analytics'), snap => {
+    if (snap.exists() && snap.data().resetDate) {
+      analyticsResetDate = snap.data().resetDate.toDate();
+    }
+    if (currentPage === 'analytics') renderAnalytics();
+  });
+}
+
+// ══════════════════════════════════════════════
 //  MESSAGES / CHAT
 // ══════════════════════════════════════════════
 let allChats = {};
@@ -1690,7 +1927,8 @@ function startChatListener() {
 Object.assign(window, {
   logout, promptCancel, addBlock, removeBlock,
   confirmClearAll, clearDayPanel, closeConfirm,
-  openConvo, adminSendMsg
+  openConvo, adminSendMsg,
+  setAnalyticsTab, confirmResetAnalytics
 });
 
 // ══════════════════════════════════════════════
