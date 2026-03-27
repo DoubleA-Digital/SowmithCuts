@@ -575,11 +575,11 @@
     <div class="login-logo">Sowmith Cuts</div>
     <div class="login-sub">Owner Portal</div>
     <div class="login-title">Sign In to Dashboard</div>
-    <div class="login-err" id="loginErr">Incorrect username or password.</div>
+    <div class="login-err" id="loginErr">Incorrect email or password.</div>
     <form id="loginForm">
       <div class="lgroup">
-        <label class="llabel" for="lUser">Username</label>
-        <input type="text" class="linput" id="lUser" placeholder="Enter username" autocomplete="username" required>
+        <label class="llabel" for="lUser">Email</label>
+        <input type="email" class="linput" id="lUser" placeholder="Enter email" autocomplete="email" required>
       </div>
       <div class="lgroup">
         <label class="llabel" for="lPass">Password</label>
@@ -884,22 +884,6 @@
         </form>
       </div>
 
-      <div class="settings-card">
-        <div class="settings-title">Change Username</div>
-        <div class="settings-sub">Update the admin login username.</div>
-        <form id="userForm">
-          <div class="sgroup">
-            <label class="slabel" for="unNew">New Username</label>
-            <input type="text" class="sinput" id="unNew" placeholder="New username" required>
-          </div>
-          <div class="sgroup">
-            <label class="slabel" for="unPass">Confirm with Password</label>
-            <input type="password" class="sinput" id="unPass" placeholder="Current password" required>
-          </div>
-          <button type="submit" class="btn-gold-sm">Update Username</button>
-          <div class="save-msg" id="unMsg"></div>
-        </form>
-      </div>
 
       <div class="settings-card" style="border-color:rgba(224,92,92,0.3)">
         <div class="settings-title" style="color:var(--red)">Danger Zone</div>
@@ -938,10 +922,15 @@ import {
   getFirestore, doc, setDoc, updateDoc, deleteField,
   onSnapshot, collection, writeBatch, getDocs, addDoc, serverTimestamp, query, orderBy
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import {
+  getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged,
+  updatePassword, reauthenticateWithCredential, EmailAuthProvider
+} from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 import { FIREBASE_CONFIG } from './firebase-config.js';
 
-const app = initializeApp(FIREBASE_CONFIG);
-const db  = getFirestore(app);
+const app  = initializeApp(FIREBASE_CONFIG);
+const db   = getFirestore(app);
+const auth = getAuth(app);
 
 // ══════════════════════════════════════════════
 //  IN-MEMORY CACHE  (driven by Firestore)
@@ -1003,48 +992,37 @@ function refreshCurrentPage() {
 // ══════════════════════════════════════════════
 //  DEFAULTS & CREDENTIALS
 // ══════════════════════════════════════════════
-const DEFAULT_USER = 'sowmith';
-const DEFAULT_PASS = 'barber2026';
-
-function getCreds() {
-  return {
-    user: localStorage.getItem('sc_admin_user') || DEFAULT_USER,
-    pass: localStorage.getItem('sc_admin_pass') || DEFAULT_PASS,
-  };
-}
-
 // ══════════════════════════════════════════════
-//  AUTH
+//  AUTH — Firebase Authentication
 // ══════════════════════════════════════════════
-function isLoggedIn() { return sessionStorage.getItem('sc_admin_auth') === '1'; }
-
-function checkAuth() {
-  if (isLoggedIn()) showDashboard();
-  // else login screen is already visible
-}
-
-document.getElementById('loginForm').addEventListener('submit', function(e) {
-  e.preventDefault();
-  const user = document.getElementById('lUser').value.trim();
-  const pass = document.getElementById('lPass').value;
-  const creds = getCreds();
-  const err = document.getElementById('loginErr');
-
-  if (user === creds.user && pass === creds.pass) {
-    err.classList.remove('show');
-    sessionStorage.setItem('sc_admin_auth', '1');
-    showDashboard();
+onAuthStateChanged(auth, user => {
+  if (user) {
+    showDashboard(user);
   } else {
-    err.classList.add('show');
-    document.getElementById('lPass').value = '';
-    document.getElementById('lPass').focus();
+    document.getElementById('loginScreen').style.display = 'flex';
+    document.getElementById('dashboard').style.display = 'none';
   }
 });
 
-function showDashboard() {
+document.getElementById('loginForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  const email = document.getElementById('lUser').value.trim();
+  const pass  = document.getElementById('lPass').value;
+  const err   = document.getElementById('loginErr');
+
+  signInWithEmailAndPassword(auth, email, pass)
+    .then(() => { err.classList.remove('show'); })
+    .catch(() => {
+      err.classList.add('show');
+      document.getElementById('lPass').value = '';
+      document.getElementById('lPass').focus();
+    });
+});
+
+function showDashboard(user) {
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('dashboard').style.display = 'block';
-  document.getElementById('sbUserName').textContent = getCreds().user;
+  document.getElementById('sbUserName').textContent = user ? user.email : 'Admin';
   startListeners();
   startChatListener();
   loadAnalyticsSettings();
@@ -1052,8 +1030,7 @@ function showDashboard() {
 }
 
 function logout() {
-  sessionStorage.removeItem('sc_admin_auth');
-  location.reload();
+  signOut(auth);
 }
 
 // ══════════════════════════════════════════════
@@ -1566,33 +1543,25 @@ document.getElementById('pwForm').addEventListener('submit', function(e) {
   const nw      = document.getElementById('pwNew').value;
   const confirm = document.getElementById('pwConfirm').value;
   const msg     = document.getElementById('pwMsg');
-  const creds   = getCreds();
+  const user    = auth.currentUser;
 
-  if (curr !== creds.pass) { showMsg(msg, 'Current password is incorrect.', 'err'); return; }
-  if (nw.length < 6)       { showMsg(msg, 'New password must be at least 6 characters.', 'err'); return; }
-  if (nw !== confirm)      { showMsg(msg, 'Passwords do not match.', 'err'); return; }
+  if (!user) { showMsg(msg, 'Not logged in.', 'err'); return; }
+  if (nw.length < 6)  { showMsg(msg, 'New password must be at least 6 characters.', 'err'); return; }
+  if (nw !== confirm) { showMsg(msg, 'Passwords do not match.', 'err'); return; }
 
-  localStorage.setItem('sc_admin_pass', nw);
-  this.reset();
-  showMsg(msg, 'Password updated successfully.', 'ok');
-  toast('Password changed ✓');
-});
-
-document.getElementById('userForm').addEventListener('submit', function(e) {
-  e.preventDefault();
-  const newUser = document.getElementById('unNew').value.trim();
-  const pass    = document.getElementById('unPass').value;
-  const msg     = document.getElementById('unMsg');
-  const creds   = getCreds();
-
-  if (pass !== creds.pass) { showMsg(msg, 'Password is incorrect.', 'err'); return; }
-  if (!newUser)            { showMsg(msg, 'Username cannot be empty.', 'err'); return; }
-
-  localStorage.setItem('sc_admin_user', newUser);
-  document.getElementById('sbUserName').textContent = newUser;
-  this.reset();
-  showMsg(msg, 'Username updated successfully.', 'ok');
-  toast('Username changed ✓');
+  const credential = EmailAuthProvider.credential(user.email, curr);
+  reauthenticateWithCredential(user, credential)
+    .then(() => updatePassword(user, nw))
+    .then(() => {
+      this.reset();
+      showMsg(msg, 'Password updated successfully.', 'ok');
+      toast('Password changed ✓');
+    })
+    .catch(err2 => {
+      const text = err2.code === 'auth/wrong-password' || err2.code === 'auth/invalid-credential'
+        ? 'Current password is incorrect.' : 'Error updating password. Try again.';
+      showMsg(msg, text, 'err');
+    });
 });
 
 function showMsg(el, text, type) {
@@ -1940,7 +1909,7 @@ Object.assign(window, {
 // ══════════════════════════════════════════════
 //  BOOT
 // ══════════════════════════════════════════════
-checkAuth();
+// Auth is handled by onAuthStateChanged above
 </script>
 </body>
 </html>
