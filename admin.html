@@ -722,6 +722,7 @@
       <div class="card">
         <div class="card-head">
           <div class="card-head-title" id="scheduleHeading">Today's Schedule</div>
+          <button onclick="exportToCalendar()" style="background:var(--gold);color:#000;border:none;border-radius:6px;padding:0.45rem 1rem;font-size:0.8rem;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:0.4rem;">📅 Add to Calendar</button>
         </div>
         <div class="card-body">
           <div class="appt-list" id="scheduleList"></div>
@@ -1925,11 +1926,84 @@ function startChatListener() {
 // ══════════════════════════════════════════════
 //  EXPOSE GLOBALS (required for onclick= in HTML)
 // ══════════════════════════════════════════════
+// ══════════════════════════════════════════════
+//  EXPORT TO CALENDAR (ICS)
+// ══════════════════════════════════════════════
+function exportToCalendar() {
+  const today = todayKey();
+  const upcoming = getAllBookings().filter(r => r.date >= today);
+
+  if (!upcoming.length) {
+    alert('No upcoming appointments to export.');
+    return;
+  }
+
+  const pad = n => String(n).padStart(2, '0');
+
+  function toICSDate(dateStr, timeStr) {
+    // dateStr: 'YYYY-MM-DD', timeStr: '9:00 AM'
+    const [y, mo, d] = dateStr.split('-').map(Number);
+    let [time, ampm] = timeStr.split(' ');
+    let [h, m] = time.split(':').map(Number);
+    if (ampm === 'PM' && h !== 12) h += 12;
+    if (ampm === 'AM' && h === 12) h = 0;
+    return `${y}${pad(mo)}${pad(d)}T${pad(h)}${pad(m)}00`;
+  }
+
+  function toICSDateEnd(dateStr, timeStr) {
+    // appointments are 30 min long
+    const [y, mo, d] = dateStr.split('-').map(Number);
+    let [time, ampm] = timeStr.split(' ');
+    let [h, m] = time.split(':').map(Number);
+    if (ampm === 'PM' && h !== 12) h += 12;
+    if (ampm === 'AM' && h === 12) h = 0;
+    m += 30;
+    if (m >= 60) { h += 1; m -= 60; }
+    return `${y}${pad(mo)}${pad(d)}T${pad(h)}${pad(m)}00`;
+  }
+
+  const events = upcoming.map(r => {
+    const uid = `${r.date}-${r.time.replace(/[^0-9]/g,'')}@sowmithcuts`;
+    const start = toICSDate(r.date, r.time);
+    const end   = toICSDateEnd(r.date, r.time);
+    const summary = `Haircut — ${r.name}`;
+    const desc = `Service: ${r.service}\\nPhone: ${r.phone}${r.notes ? '\\nNotes: ' + r.notes : ''}`;
+    return [
+      'BEGIN:VEVENT',
+      `UID:${uid}`,
+      `DTSTART:${start}`,
+      `DTEND:${end}`,
+      `SUMMARY:${summary}`,
+      `DESCRIPTION:${desc}`,
+      'END:VEVENT'
+    ].join('\r\n');
+  }).join('\r\n');
+
+  const ics = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Sowmith Cuts//Admin//EN',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    events,
+    'END:VCALENDAR'
+  ].join('\r\n');
+
+  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = 'sowmithcuts-appointments.ics';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 Object.assign(window, {
   logout, promptCancel, addBlock, removeBlock,
   confirmClearAll, clearDayPanel, closeConfirm,
   openConvo, adminSendMsg,
-  setAnalyticsTab, confirmResetAnalytics
+  setAnalyticsTab, confirmResetAnalytics,
+  exportToCalendar
 });
 
 // ══════════════════════════════════════════════
