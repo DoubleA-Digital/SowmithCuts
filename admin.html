@@ -1006,7 +1006,7 @@ function refreshCurrentPage() {
 // ══════════════════════════════════════════════
 //  PASSWORD TOGGLE
 // ══════════════════════════════════════════════
-function togglePw() {
+window.togglePw = function() {
   const input = document.getElementById('lPass');
   const btn   = document.getElementById('pwToggleBtn');
   if (input.type === 'password') {
