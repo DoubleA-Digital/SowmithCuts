@@ -821,10 +821,14 @@
       </div>
 
       <div class="card" style="max-width:600px">
-        <div class="card-head"><div class="card-head-title">Business Hours</div></div>
+        <div class="card-head">
+          <div class="card-head-title">Business Hours</div>
+          <span id="schedSaveStatus" style="font-size:0.78rem;color:var(--text-muted)"></span>
+        </div>
         <div class="card-body">
-          <p style="font-size:0.85rem;color:var(--text-muted)">Current hours are Tue–Fri 9am–7pm · Saturday 9am–5pm · Closed Sun &amp; Mon.</p>
-          <p style="font-size:0.8rem;color:#555;margin-top:0.5rem">To change hours, contact your developer or edit the HOURS_CONFIG in admin.html and index.html.</p>
+          <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:1.2rem">Set which days you're open and your start/end times. Changes go live instantly on the booking site.</p>
+          <div id="schedEditor" style="display:flex;flex-direction:column;gap:0.7rem"></div>
+          <button onclick="saveSchedule()" style="margin-top:1.2rem;background:var(--gold);color:#000;border:none;border-radius:7px;padding:0.55rem 1.4rem;font-weight:600;font-size:0.85rem;cursor:pointer;">Save Hours</button>
         </div>
       </div>
     </div>
@@ -986,6 +990,8 @@ function startListeners() {
 
   onSnapshot(doc(db, 'config', 'settings'), snap => {
     blockedCache = (snap.data() || {}).blocked || {};
+    const savedSchedule = (snap.data() || {}).schedule || null;
+    if (savedSchedule) renderScheduleEditor(savedSchedule);
     refreshCurrentPage();
   }, err => console.error('Settings:', err));
 }
@@ -1922,6 +1928,74 @@ function startChatListener() {
     }
   });
 }
+
+// ══════════════════════════════════════════════
+//  BUSINESS HOURS / SCHEDULE EDITOR
+// ══════════════════════════════════════════════
+const DAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const DEFAULT_SCHEDULE = {
+  0: { open: false },
+  1: { open: false },
+  2: { open: true, from: '09:00', to: '19:00' },
+  3: { open: true, from: '09:00', to: '19:00' },
+  4: { open: true, from: '09:00', to: '19:00' },
+  5: { open: true, from: '09:00', to: '19:00' },
+  6: { open: true, from: '09:00', to: '17:00' }
+};
+
+function renderScheduleEditor(schedule) {
+  const editor = document.getElementById('schedEditor');
+  if (!editor) return;
+  const s = schedule || DEFAULT_SCHEDULE;
+  editor.innerHTML = DAY_NAMES.map((name, i) => {
+    const day  = s[i] || { open: false };
+    const from = day.from || '09:00';
+    const to   = day.to   || '17:00';
+    return `
+    <div style="display:flex;align-items:center;gap:0.8rem;padding:0.6rem 0.8rem;background:var(--dark-4);border:1px solid var(--border);border-radius:8px;flex-wrap:wrap">
+      <span style="width:90px;font-size:0.85rem;font-weight:500">${name}</span>
+      <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.82rem">
+        <input type="checkbox" id="sched-open-${i}" ${day.open ? 'checked' : ''} onchange="toggleSchedDay(${i})" style="accent-color:var(--gold);width:16px;height:16px">
+        <span id="sched-label-${i}" style="color:${day.open ? 'var(--gold)' : 'var(--text-muted)'}">${day.open ? 'Open' : 'Closed'}</span>
+      </label>
+      <div id="sched-times-${i}" style="display:${day.open ? 'flex' : 'none'};align-items:center;gap:0.5rem;flex:1">
+        <input type="time" id="sched-from-${i}" value="${from}" style="background:var(--dark-3);border:1px solid var(--border);border-radius:6px;padding:0.3rem 0.5rem;color:var(--text);font-size:0.82rem">
+        <span style="color:var(--text-muted);font-size:0.8rem">to</span>
+        <input type="time" id="sched-to-${i}" value="${to}" style="background:var(--dark-3);border:1px solid var(--border);border-radius:6px;padding:0.3rem 0.5rem;color:var(--text);font-size:0.82rem">
+      </div>
+    </div>`;
+  }).join('');
+}
+
+window.toggleSchedDay = function(i) {
+  const isOpen = document.getElementById(`sched-open-${i}`).checked;
+  document.getElementById(`sched-label-${i}`).textContent = isOpen ? 'Open' : 'Closed';
+  document.getElementById(`sched-label-${i}`).style.color = isOpen ? 'var(--gold)' : 'var(--text-muted)';
+  document.getElementById(`sched-times-${i}`).style.display = isOpen ? 'flex' : 'none';
+};
+
+window.saveSchedule = async function() {
+  const status = document.getElementById('schedSaveStatus');
+  status.textContent = 'Saving…';
+  const schedule = {};
+  for (let i = 0; i < 7; i++) {
+    const open = document.getElementById(`sched-open-${i}`)?.checked || false;
+    const from = document.getElementById(`sched-from-${i}`)?.value || '09:00';
+    const to   = document.getElementById(`sched-to-${i}`)?.value   || '17:00';
+    schedule[i] = open ? { open: true, from, to } : { open: false };
+  }
+  try {
+    await setDoc(doc(db, 'config', 'settings'), { schedule }, { merge: true });
+    status.textContent = '✓ Saved';
+    setTimeout(() => { status.textContent = ''; }, 2500);
+  } catch(e) {
+    status.textContent = 'Error saving';
+    console.error(e);
+  }
+};
+
+// Init editor with defaults on page load
+renderScheduleEditor(null);
 
 // ══════════════════════════════════════════════
 //  EXPOSE GLOBALS (required for onclick= in HTML)

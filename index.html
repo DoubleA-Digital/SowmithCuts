@@ -846,6 +846,7 @@ const SLOTS_SAT = [
 // ══════════════════════════════════════════════
 let bookingsCache = {};
 let blockedCache  = {};
+let scheduleCache = null;
 let dataReady     = false;
 let bookingsReady = false;
 let settingsReady = false;
@@ -864,8 +865,30 @@ let selTime  = null;
 function toKey(y, m, d) {
   return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
 }
+function generateSlots(from, to) {
+  const slots = [];
+  let [h, m] = from.split(':').map(Number);
+  const [eh, em] = to.split(':').map(Number);
+  while (h < eh || (h === eh && m < em)) {
+    const ampm = h < 12 ? 'AM' : 'PM';
+    const dh = h === 0 ? 12 : h > 12 ? h - 12 : h;
+    slots.push(`${dh}:${String(m).padStart(2,'0')} ${ampm}`);
+    m += 30; if (m >= 60) { h++; m -= 60; }
+  }
+  return slots;
+}
+function isDayClosed(dow) {
+  if (scheduleCache && scheduleCache[dow] !== undefined) return !scheduleCache[dow].open;
+  return CLOSED_DOW.includes(dow);
+}
 function slotsForKey(k) {
-  return new Date(k + 'T12:00:00').getDay() === 6 ? SLOTS_SAT : SLOTS_WEEKDAY;
+  const dow = new Date(k + 'T12:00:00').getDay();
+  if (scheduleCache && scheduleCache[dow]) {
+    const day = scheduleCache[dow];
+    if (!day.open) return [];
+    return generateSlots(day.from, day.to);
+  }
+  return dow === 6 ? SLOTS_SAT : SLOTS_WEEKDAY;
 }
 
 // ══════════════════════════════════════════════
@@ -898,15 +921,17 @@ onSnapshot(collection(db, 'bookings'), snap => {
        Could not connect — check firebase-config.js</div>`;
 });
 
-// Subscribe to blocked dates stored in config/settings
+// Subscribe to blocked dates + schedule stored in config/settings
 onSnapshot(doc(db, 'config', 'settings'), snap => {
-  blockedCache = (snap.data() || {}).blocked || {};
+  const data = snap.data() || {};
+  blockedCache  = data.blocked  || {};
+  scheduleCache = data.schedule || null;
   settingsReady = true;
   onBothReady();
   if (dataReady) renderCalendar();
 }, err => {
   console.error('Settings listener:', err);
-  settingsReady = true; // missing doc is fine on first run
+  settingsReady = true;
   onBothReady();
 });
 
@@ -948,7 +973,7 @@ function renderCalendar() {
       el.addEventListener('click', () => pickDate(key));
     } else if (ms < todayMs) {
       el.classList.add('past');
-    } else if (CLOSED_DOW.includes(dow)) {
+    } else if (isDayClosed(dow)) {
       el.classList.add('closed');
     } else if (blocked.includes(key)) {
       el.classList.add('blocked');
