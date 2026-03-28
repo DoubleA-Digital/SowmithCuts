@@ -5,4 +5,15 @@ NAME:Sowmith Cuts — Appointments
 X-WR-CALNAME:Sowmith Cuts — Appointments
 TIMEZONE-ID:America/Los_Angeles
 X-WR-TIMEZONE:America/Los_Angeles
+BEGIN:VEVENT
+UID:d538569c-0235-4384-89f1-f5dfc7296bdc
+SEQUENCE:0
+DTSTAMP:20260328T051558
+DTSTART;TZID=America/Los_Angeles:20260430T183000
+DTEND;TZID=America/Los_Angeles:20260430T190000
+SUMMARY:Standard Cut + Design — Aarush Gurram
+LOCATION:Sowmith Cuts\, Simi Valley CA
+DESCRIPTION:Client: Aarush Gurram\nPhone: 18052841628\nNotes: i am a lard\
+ nRef: MN9K8CUP1C4
+END:VEVENT
 END:VCALENDAR
