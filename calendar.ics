@@ -6,9 +6,9 @@ X-WR-CALNAME:Sowmith Cuts — Appointments
 TIMEZONE-ID:America/Los_Angeles
 X-WR-TIMEZONE:America/Los_Angeles
 BEGIN:VEVENT
-UID:d87b6a97-5b5e-4280-82ca-2cfad2e2d5cc
+UID:dca6d9f7-ab92-4dd6-9ffc-a051e1e023a3
 SEQUENCE:0
-DTSTAMP:20260403T215742
+DTSTAMP:20260403T235030
 DTSTART;TZID=America/Los_Angeles:20260430T183000
 DTEND;TZID=America/Los_Angeles:20260430T190000
 SUMMARY:Standard Cut + Design — Aarush Gurram
