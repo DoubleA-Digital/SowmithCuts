@@ -332,7 +332,16 @@
       font-size: 0.77rem; color: var(--text-muted);
     }
 
-
+    /* ── HOURS ── */
+    .hours-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(190px,1fr)); gap: 1rem; }
+    .hour-card {
+      background: var(--dark-3); border: 1px solid var(--border);
+      border-radius: 8px; padding: 1.1rem 1.3rem;
+    }
+    .hour-day { font-weight: 600; font-size: 0.9rem; margin-bottom: 0.2rem; }
+    .hour-time { color: var(--gold); font-size: 0.86rem; }
+    .hour-closed { color: var(--text-muted); font-size: 0.86rem; }
+    .hour-card.today-hours { border-color: var(--gold); background: rgba(201,168,76,0.04); }
 
     /* ── FOOTER ── */
     footer {
@@ -510,6 +519,7 @@
     <li><a href="#services">Services</a></li>
     <li><a href="#booking">Book</a></li>
     <li><a href="#about">About</a></li>
+    <li><a href="#hours">Hours</a></li>
   </ul>
   <a href="#booking" class="nav-book-btn">Book Now</a>
 </nav>
@@ -722,16 +732,23 @@
   </div>
 </div>
 
+<!-- ═══ HOURS ═══ -->
+<section class="sec" id="hours">
+  <p class="sec-tag">Hours &amp; Location</p>
+  <div class="sec-rule"></div>
+  <h2 class="sec-h">When We're Open</h2>
+  <div class="hours-grid" id="hoursGrid"></div>
+</section>
 
 <!-- ═══ FOOTER ═══ -->
 <footer>
   <div class="foot-logo">Sowmith Cuts</div>
   <p class="foot-tag">Precision. Style. Confidence.</p>
-  <p style="color:var(--text-muted);font-size:0.8rem;margin-bottom:1.5rem;">📍 11158 Lopez Ct, Moorpark, CA 93021</p>
   <div class="foot-links">
     <a href="#services">Services</a>
     <a href="#booking">Book Now</a>
     <a href="#about">About</a>
+    <a href="#hours">Hours</a>
   </div>
   <p class="foot-copy">© 2026 Sowmith Cuts. All rights reserved. &nbsp;·&nbsp; <a href="admin.html" style="color:#444;text-decoration:none;transition:color 0.2s" onmouseover="this.style.color='var(--gold)'" onmouseout="this.style.color='#444'">Admin</a></p>
 </footer>
@@ -836,8 +853,8 @@ let settingsReady = false;
 // ══════════════════════════════════════════════
 //  UI STATE
 // ══════════════════════════════════════════════
-let calYear  = nowPST().getFullYear();
-let calMonth = nowPST().getMonth();
+let calYear  = new Date().getFullYear();
+let calMonth = new Date().getMonth();
 let selDate  = null;
 let selTime  = null;
 
@@ -846,20 +863,6 @@ let selTime  = null;
 // ══════════════════════════════════════════════
 function toKey(y, m, d) {
   return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-}
-function nowPST() {
-  return new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
-}
-function todayKeyPST() {
-  const n = nowPST();
-  return toKey(n.getFullYear(), n.getMonth(), n.getDate());
-}
-function parseSlotMinutes(slot) {
-  const [time, ampm] = slot.split(' ');
-  let [h, m] = time.split(':').map(Number);
-  if (ampm === 'PM' && h !== 12) h += 12;
-  if (ampm === 'AM' && h === 12) h = 0;
-  return h * 60 + m;
 }
 function generateSlots(from, to) {
   const slots = [];
@@ -941,7 +944,7 @@ function renderCalendar() {
   document.getElementById('calTitle').textContent = `${MONTH_NAMES[calMonth]} ${calYear}`;
 
   const blocked     = Object.keys(blockedCache);
-  const todayKey    = todayKeyPST();
+  const todayMs     = new Date(new Date().toDateString()).getTime();
   const firstDow    = new Date(calYear, calMonth, 1).getDay();
   const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
   const container   = document.getElementById('calDays');
@@ -957,16 +960,17 @@ function renderCalendar() {
     const key  = toKey(calYear, calMonth, d);
     const date = new Date(calYear, calMonth, d);
     const dow  = date.getDay();
+    const ms   = date.getTime();
     const el   = document.createElement('div');
 
     el.textContent = d;
     el.classList.add('cal-day');
-    if (key === todayKey) el.classList.add('today-dot');
+    if (ms === todayMs) el.classList.add('today-dot');
 
     if (key === selDate) {
       el.classList.add('selected');
       el.addEventListener('click', () => pickDate(key));
-    } else if (key < todayKey) {
+    } else if (ms < todayMs) {
       el.classList.add('past');
     } else if (isDayClosed(dow)) {
       el.classList.add('closed');
@@ -988,7 +992,7 @@ function renderCalendar() {
 }
 
 document.getElementById('prevBtn').addEventListener('click', () => {
-  const now = nowPST();
+  const now = new Date();
   if (calYear === now.getFullYear() && calMonth === now.getMonth()) return;
   calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; }
   renderCalendar();
@@ -1012,19 +1016,14 @@ function renderSlots() {
   const dateLabel = new Date(selDate + 'T12:00:00')
     .toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' });
 
-  const isToday = selDate === todayKeyPST();
-  const pstNow  = nowPST();
-  const nowMins = pstNow.getHours() * 60 + pstNow.getMinutes();
-
   let html = `<div class="slots-date-label">${dateLabel}</div><div class="slots-grid">`;
   slots.forEach(slot => {
     const taken    = !!dayBooked[slot];
-    const isPast   = isToday && parseSlotMinutes(slot) <= nowMins;
-    const selected = slot === selTime && !taken && !isPast;
+    const selected = slot === selTime && !taken;
     let cls = 'slot';
-    if (taken || isPast) cls += ' slot-taken';
-    else if (selected)   cls += ' slot-sel';
-    html += `<div class="${cls}"${(taken || isPast) ? '' : ` data-slot="${slot}"`}>${slot}</div>`;
+    if (taken)         cls += ' slot-taken';
+    else if (selected) cls += ' slot-sel';
+    html += `<div class="${cls}"${taken ? '' : ` data-slot="${slot}"`}>${slot}</div>`;
   });
   html += '</div>';
   sec.innerHTML = html;
@@ -1215,6 +1214,17 @@ document.getElementById('successOverlay').addEventListener('click', function(e) 
   if (e.target === this) closeModal();
 });
 
+// ══════════════════════════════════════════════
+//  HOURS
+// ══════════════════════════════════════════════
+function renderHours() {
+  const todayDow = new Date().getDay();
+  document.getElementById('hoursGrid').innerHTML = HOURS_CONFIG.map((h, i) => `
+    <div class="hour-card${i === todayDow ? ' today-hours' : ''}">
+      <div class="hour-day">${h.day}${i === todayDow ? ' <span style="font-size:.7rem;color:var(--gold);font-weight:400">Today</span>' : ''}</div>
+      ${h.open ? `<div class="hour-time">${h.from} – ${h.to}</div>` : `<div class="hour-closed">Closed</div>`}
+    </div>`).join('');
+}
 
 // ══════════════════════════════════════════════
 //  NAV SCROLL
@@ -1355,6 +1365,7 @@ Object.assign(window, { pickService, closeModal, toggleChat, startChat, sendChat
 // ══════════════════════════════════════════════
 //  INIT
 // ══════════════════════════════════════════════
+renderHours();
 // Calendar renders after Firebase data arrives via onSnapshot above
 </script>
 </body>
