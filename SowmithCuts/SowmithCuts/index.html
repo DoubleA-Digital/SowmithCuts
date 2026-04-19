@@ -332,7 +332,16 @@
       font-size: 0.77rem; color: var(--text-muted);
     }
 
-
+    /* ── HOURS ── */
+    .hours-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(190px,1fr)); gap: 1rem; }
+    .hour-card {
+      background: var(--dark-3); border: 1px solid var(--border);
+      border-radius: 8px; padding: 1.1rem 1.3rem;
+    }
+    .hour-day { font-weight: 600; font-size: 0.9rem; margin-bottom: 0.2rem; }
+    .hour-time { color: var(--gold); font-size: 0.86rem; }
+    .hour-closed { color: var(--text-muted); font-size: 0.86rem; }
+    .hour-card.today-hours { border-color: var(--gold); background: rgba(201,168,76,0.04); }
 
     /* ── FOOTER ── */
     footer {
@@ -510,6 +519,7 @@
     <li><a href="#services">Services</a></li>
     <li><a href="#booking">Book</a></li>
     <li><a href="#about">About</a></li>
+    <li><a href="#hours">Hours</a></li>
   </ul>
   <a href="#booking" class="nav-book-btn">Book Now</a>
 </nav>
@@ -722,16 +732,23 @@
   </div>
 </div>
 
+<!-- ═══ HOURS ═══ -->
+<section class="sec" id="hours">
+  <p class="sec-tag">Hours &amp; Location</p>
+  <div class="sec-rule"></div>
+  <h2 class="sec-h">When We're Open</h2>
+  <div class="hours-grid" id="hoursGrid"></div>
+</section>
 
 <!-- ═══ FOOTER ═══ -->
 <footer>
   <div class="foot-logo">Sowmith Cuts</div>
   <p class="foot-tag">Precision. Style. Confidence.</p>
-  <p style="color:var(--text-muted);font-size:0.8rem;margin-bottom:1.5rem;">📍 11158 Lopez Ct, Moorpark, CA 93021</p>
   <div class="foot-links">
     <a href="#services">Services</a>
     <a href="#booking">Book Now</a>
     <a href="#about">About</a>
+    <a href="#hours">Hours</a>
   </div>
   <p class="foot-copy">© 2026 Sowmith Cuts. All rights reserved. &nbsp;·&nbsp; <a href="admin.html" style="color:#444;text-decoration:none;transition:color 0.2s" onmouseover="this.style.color='var(--gold)'" onmouseout="this.style.color='#444'">Admin</a></p>
 </footer>
@@ -1197,6 +1214,17 @@ document.getElementById('successOverlay').addEventListener('click', function(e) 
   if (e.target === this) closeModal();
 });
 
+// ══════════════════════════════════════════════
+//  HOURS
+// ══════════════════════════════════════════════
+function renderHours() {
+  const todayDow = new Date().getDay();
+  document.getElementById('hoursGrid').innerHTML = HOURS_CONFIG.map((h, i) => `
+    <div class="hour-card${i === todayDow ? ' today-hours' : ''}">
+      <div class="hour-day">${h.day}${i === todayDow ? ' <span style="font-size:.7rem;color:var(--gold);font-weight:400">Today</span>' : ''}</div>
+      ${h.open ? `<div class="hour-time">${h.from} – ${h.to}</div>` : `<div class="hour-closed">Closed</div>`}
+    </div>`).join('');
+}
 
 // ══════════════════════════════════════════════
 //  NAV SCROLL
@@ -1337,6 +1365,7 @@ Object.assign(window, { pickService, closeModal, toggleChat, startChat, sendChat
 // ══════════════════════════════════════════════
 //  INIT
 // ══════════════════════════════════════════════
+renderHours();
 // Calendar renders after Firebase data arrives via onSnapshot above
 </script>
 </body>
