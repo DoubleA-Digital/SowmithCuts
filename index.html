@@ -836,8 +836,8 @@ let settingsReady = false;
 // ══════════════════════════════════════════════
 //  UI STATE
 // ══════════════════════════════════════════════
-let calYear  = new Date().getFullYear();
-let calMonth = new Date().getMonth();
+let calYear  = nowPST().getFullYear();
+let calMonth = nowPST().getMonth();
 let selDate  = null;
 let selTime  = null;
 
@@ -846,6 +846,20 @@ let selTime  = null;
 // ══════════════════════════════════════════════
 function toKey(y, m, d) {
   return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+}
+function nowPST() {
+  return new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+}
+function todayKeyPST() {
+  const n = nowPST();
+  return toKey(n.getFullYear(), n.getMonth(), n.getDate());
+}
+function parseSlotMinutes(slot) {
+  const [time, ampm] = slot.split(' ');
+  let [h, m] = time.split(':').map(Number);
+  if (ampm === 'PM' && h !== 12) h += 12;
+  if (ampm === 'AM' && h === 12) h = 0;
+  return h * 60 + m;
 }
 function generateSlots(from, to) {
   const slots = [];
@@ -927,7 +941,7 @@ function renderCalendar() {
   document.getElementById('calTitle').textContent = `${MONTH_NAMES[calMonth]} ${calYear}`;
 
   const blocked     = Object.keys(blockedCache);
-  const todayMs     = new Date(new Date().toDateString()).getTime();
+  const todayKey    = todayKeyPST();
   const firstDow    = new Date(calYear, calMonth, 1).getDay();
   const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
   const container   = document.getElementById('calDays');
@@ -943,17 +957,16 @@ function renderCalendar() {
     const key  = toKey(calYear, calMonth, d);
     const date = new Date(calYear, calMonth, d);
     const dow  = date.getDay();
-    const ms   = date.getTime();
     const el   = document.createElement('div');
 
     el.textContent = d;
     el.classList.add('cal-day');
-    if (ms === todayMs) el.classList.add('today-dot');
+    if (key === todayKey) el.classList.add('today-dot');
 
     if (key === selDate) {
       el.classList.add('selected');
       el.addEventListener('click', () => pickDate(key));
-    } else if (ms < todayMs) {
+    } else if (key < todayKey) {
       el.classList.add('past');
     } else if (isDayClosed(dow)) {
       el.classList.add('closed');
@@ -975,7 +988,7 @@ function renderCalendar() {
 }
 
 document.getElementById('prevBtn').addEventListener('click', () => {
-  const now = new Date();
+  const now = nowPST();
   if (calYear === now.getFullYear() && calMonth === now.getMonth()) return;
   calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; }
   renderCalendar();
@@ -999,14 +1012,19 @@ function renderSlots() {
   const dateLabel = new Date(selDate + 'T12:00:00')
     .toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' });
 
+  const isToday = selDate === todayKeyPST();
+  const pstNow  = nowPST();
+  const nowMins = pstNow.getHours() * 60 + pstNow.getMinutes();
+
   let html = `<div class="slots-date-label">${dateLabel}</div><div class="slots-grid">`;
   slots.forEach(slot => {
     const taken    = !!dayBooked[slot];
-    const selected = slot === selTime && !taken;
+    const isPast   = isToday && parseSlotMinutes(slot) <= nowMins;
+    const selected = slot === selTime && !taken && !isPast;
     let cls = 'slot';
-    if (taken)         cls += ' slot-taken';
-    else if (selected) cls += ' slot-sel';
-    html += `<div class="${cls}"${taken ? '' : ` data-slot="${slot}"`}>${slot}</div>`;
+    if (taken || isPast) cls += ' slot-taken';
+    else if (selected)   cls += ' slot-sel';
+    html += `<div class="${cls}"${(taken || isPast) ? '' : ` data-slot="${slot}"`}>${slot}</div>`;
   });
   html += '</div>';
   sec.innerHTML = html;
